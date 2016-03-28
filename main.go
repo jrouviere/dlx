@@ -170,34 +170,25 @@ func (matrix Matrix) solve() (bool, []*Cell) {
 func main() {
 	mat := newMatrix()
 
-	///* sample from wikipedia
-	//A = {1, 4, 7}
-	//B = {1, 4}
-	//C = {4, 5, 7}
-	//D = {3, 5, 6}
-	//E = {2, 3, 6, 7}
-	//F = {2, 7}
-	//*/
-	//ctr := make([]*Cell, 7)
-	//for i := 0; i < 7; i++ {
-	//	ctr[i] = mat.createConstraint(i + 1)
-	//}
-	//
-	//mat.createChoice("A", []*Cell{ctr[0], ctr[3], ctr[6]})
-	//mat.createChoice("B", []*Cell{ctr[0], ctr[3]})
-	//mat.createChoice("C", []*Cell{ctr[3], ctr[4], ctr[6]})
-	//mat.createChoice("D", []*Cell{ctr[2], ctr[4], ctr[5]})
-	//mat.createChoice("E", []*Cell{ctr[1], ctr[2], ctr[5], ctr[6]})
-	//mat.createChoice("F", []*Cell{ctr[1], ctr[6]})
+	/* sample from wikipedia
+	A = {1, 4, 7}
+	B = {1, 4}
+	C = {4, 5, 7}
+	D = {3, 5, 6}
+	E = {2, 3, 6, 7}
+	F = {2, 7}
+	*/
+	ctr := make([]*Cell, 7)
+	for i := 0; i < 7; i++ {
+		ctr[i] = mat.createConstraint(i + 1)
+	}
 
-	c0 := mat.createConstraint("C0")
-	c1 := mat.createConstraint("C1")
-	c2 := mat.createConstraint("C2")
-	c3 := mat.createConstraint("C3")
-	mat.createChoice("R0", []*Cell{c0})
-	mat.createChoice("R1", []*Cell{c1})
-	mat.createChoice("R2", []*Cell{c1, c2})
-	mat.createChoice("R3", []*Cell{c2, c3})
+	mat.createChoice("A", []*Cell{ctr[0], ctr[3], ctr[6]})
+	mat.createChoice("B", []*Cell{ctr[0], ctr[3]})
+	mat.createChoice("C", []*Cell{ctr[3], ctr[4], ctr[6]})
+	mat.createChoice("D", []*Cell{ctr[2], ctr[4], ctr[5]})
+	mat.createChoice("E", []*Cell{ctr[1], ctr[2], ctr[5], ctr[6]})
+	mat.createChoice("F", []*Cell{ctr[1], ctr[6]})
 
 	found, result := mat.solve()
 	fmt.Println(found, result)
