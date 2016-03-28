@@ -1,100 +1,205 @@
 package main
 
-// Sparse matrix implementation with 2D doubly linked list
+// See D. Knuth paper:
+// http://arxiv.org/abs/cs/0011047
+
+import (
+	"fmt"
+)
+
+// Cell is a "one" in our sparse matrix, it's an element of a 2D doubly linked list
 type Cell struct {
 	Left, Right, Up, Down *Cell
-	data interface{}
+	Row, Column           *Cell
+	data                  interface{}
 }
 
+func (cell Cell) String() string {
+	return fmt.Sprintf("%v", cell.data)
+}
 
-// // Constraints are columns in our matrix
-// type Constraint struct {
-// 	Cell
-// 	description string
-// }
-
-// // Choices are the rows of our matrix
-// type Choice struct {
-// 	Cell
-// 	description string
-// }
-
-// The problem matrix, simply defined as the root element of the doubly linked list
+// Matrix defines a sparse matrix, it's the root element of the doubly linked list
+// Constraints are columns in our matrix
+// Choices are the rows of our matrix
 type Matrix struct {
-	root Cell
+	root *Cell
 }
-
 
 func newMatrix() *Matrix {
 	matrix := Matrix{}
-	
+
 	//initially the matrix is completely empty
-	matrix.root.Left = &matrix.root
-	matrix.root.Right = &matrix.root
-	matrix.root.Up = &matrix.root
-	matrix.root.Down = &matrix.root
-	
+	matrix.root = new(Cell)
+	matrix.root.Left = matrix.root
+	matrix.root.Right = matrix.root
+	matrix.root.Up = matrix.root
+	matrix.root.Down = matrix.root
+
+	matrix.root.data = "root"
+
 	return &matrix
 }
 
 func (matrix Matrix) createConstraint(data interface{}) *Cell {
 	constraint := Cell{}
-	
+
+	constraint.data = data
+
 	// initially no choice cover this constraint
 	constraint.Up = &constraint
 	constraint.Down = &constraint
-	
-	constraint.data = data
-	
+	constraint.Column = &constraint
+
 	// add the constraint to the matrix as the last column
 	constraint.Left = matrix.root.Left
-	constraint.Right = &matrix.root
-	
+	constraint.Right = matrix.root
+	constraint.Row = matrix.root
+
 	//TODO: should be constraint.restore
 	constraint.Left.Right = &constraint
 	constraint.Right.Left = &constraint
-	
+
 	return &constraint
 }
 
-func (matrix Matrix) createChoice(data interface{}, constraints []*Cell) {
+func (matrix Matrix) createChoice(data interface{}, constraints []*Cell) *Cell {
 	choice := Cell{}
-	
+
+	choice.data = data
+
 	// initially this choice doesn't cover any constraint
 	choice.Left = &choice
 	choice.Right = &choice
-	
-	choice.data = data
-	
-	// add the choice to the matrix as the last row 
+	choice.Row = &choice
+
+	// add the choice to the matrix as the last row
 	choice.Up = matrix.root.Up
-	choice.Down = &matrix.root
-	
+	choice.Down = matrix.root
+	choice.Column = matrix.root
+
 	//TODO: should be row.restore
 	choice.Up.Down = &choice
 	choice.Down.Up = &choice
+
+	for _, constraint := range constraints {
+		cell := Cell{}
+
+		// add it to the choice
+		cell.Left = choice.Left
+		cell.Right = choice.Left.Right
+		cell.Left.Right = &cell
+		cell.Right.Left = &cell
+		cell.Row = choice.Left.Right
+
+		// add it to the constraint
+		cell.Up = constraint.Up
+		cell.Down = constraint.Up.Down
+		cell.Up.Down = &cell
+		cell.Down.Up = &cell
+		cell.Column = constraint
+
+		cell.data = fmt.Sprintf("%v: %v", cell.Row.data, cell.Column.data)
+	}
+	return &choice
 }
 
-/*
-A = {1, 4, 7}
-B = {1, 4}
-C = {4, 5, 7}
-D = {3, 5, 6}
-E = {2, 3, 6, 7}
-F = {2, 7}
-*/
+
+func (matrix Matrix) coverColumn(column *Cell) {
+	column = column.Column
+	column.Left.Right = column.Right
+	column.Right.Left = column.Left
+	for row := column.Down; row != column; row = row.Down {
+		for cell := row.Right; cell != row; cell = cell.Right {
+			cell.Up.Down = cell.Down
+			cell.Down.Up = cell.Up
+		}
+	}
+}
+
+func (matrix Matrix) uncoverColumn(column *Cell) {
+	column = column.Column
+	for row := column.Up; row != column; row = row.Up {
+		for cell := row.Left; cell != row; cell = cell.Left {
+			cell.Up.Down = cell
+			cell.Down.Up = cell
+		}
+	}
+	column.Left.Right = column
+	column.Right.Left = column
+}
+
+func (matrix Matrix) solve() (bool, []*Cell) {
+
+	found, partial := false, make([]*Cell, 0)
+
+	// TODO: use an euristic to take the constraint satisfied by fewer choices
+
+	// choose an unsolved constraint: aka a column
+	constraint := matrix.root.Right
+
+	// no more constraint, we are done!
+	if constraint == constraint.Right {
+		return true, make([]*Cell, 0)
+	}
+
+	// cover column
+	matrix.coverColumn(constraint)
+
+	for row := constraint.Down; row != constraint; row = row.Down {
+		rowHead := row.Row
+		for cell := rowHead.Right; cell != rowHead; cell = cell.Right {
+			matrix.coverColumn(cell)
+		}
+
+		// solve recursively
+		found, partial = matrix.solve()
+		if found {
+			partial = append(partial, rowHead)
+		}
+
+		for cell := rowHead.Left; cell != rowHead; cell = cell.Left {
+			matrix.uncoverColumn(cell)
+		}
+
+	}
+
+	matrix.uncoverColumn(constraint)
+
+	return found, partial
+}
+
 func main() {
 	mat := newMatrix()
-	
-	ctr := make([]*Cell, 7)
-	for i := 0; i < 7; i++ {
-		ctr[i] = mat.createConstraint(i+1)
-	}
-	
-	mat.createChoice("A", []*Cell{ctr[0], ctr[3], ctr[6]})
-	mat.createChoice("B", []*Cell{ctr[0], ctr[3]})
-	mat.createChoice("C", []*Cell{ctr[3], ctr[4], ctr[6]})
-	mat.createChoice("D", []*Cell{ctr[2], ctr[4], ctr[5]})
-	mat.createChoice("E", []*Cell{ctr[1], ctr[2], ctr[5], ctr[6]})
-	mat.createChoice("F", []*Cell{ctr[1], ctr[6]})
+
+	///* sample from wikipedia
+	//A = {1, 4, 7}
+	//B = {1, 4}
+	//C = {4, 5, 7}
+	//D = {3, 5, 6}
+	//E = {2, 3, 6, 7}
+	//F = {2, 7}
+	//*/
+	//ctr := make([]*Cell, 7)
+	//for i := 0; i < 7; i++ {
+	//	ctr[i] = mat.createConstraint(i + 1)
+	//}
+	//
+	//mat.createChoice("A", []*Cell{ctr[0], ctr[3], ctr[6]})
+	//mat.createChoice("B", []*Cell{ctr[0], ctr[3]})
+	//mat.createChoice("C", []*Cell{ctr[3], ctr[4], ctr[6]})
+	//mat.createChoice("D", []*Cell{ctr[2], ctr[4], ctr[5]})
+	//mat.createChoice("E", []*Cell{ctr[1], ctr[2], ctr[5], ctr[6]})
+	//mat.createChoice("F", []*Cell{ctr[1], ctr[6]})
+
+	c0 := mat.createConstraint("C0")
+	c1 := mat.createConstraint("C1")
+	c2 := mat.createConstraint("C2")
+	c3 := mat.createConstraint("C3")
+	mat.createChoice("R0", []*Cell{c0})
+	mat.createChoice("R1", []*Cell{c1})
+	mat.createChoice("R2", []*Cell{c1, c2})
+	mat.createChoice("R3", []*Cell{c2, c3})
+
+	found, result := mat.solve()
+	fmt.Println(found, result)
 }
