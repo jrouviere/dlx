@@ -1,7 +1,5 @@
 package main
 
-// See D. Knuth paper:
-// http://arxiv.org/abs/cs/0011047
 
 import (
 	"fmt"
