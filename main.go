@@ -130,8 +130,6 @@ func (matrix Matrix) uncoverColumn(column *Cell) {
 
 func (matrix Matrix) solve() (bool, []*Cell) {
 
-	found, partial := false, make([]*Cell, 0)
-
 	// TODO: use an euristic to take the constraint satisfied by fewer choices
 
 	// choose an unsolved constraint: aka a column
@@ -152,9 +150,10 @@ func (matrix Matrix) solve() (bool, []*Cell) {
 		}
 
 		// solve recursively
-		found, partial = matrix.solve()
+		found, partial := matrix.solve()
 		if found {
 			partial = append(partial, rowHead)
+			return true, partial
 		}
 
 		for cell := rowHead.Left; cell != rowHead; cell = cell.Left {
@@ -165,7 +164,7 @@ func (matrix Matrix) solve() (bool, []*Cell) {
 
 	matrix.uncoverColumn(constraint)
 
-	return found, partial
+	return false, make([]*Cell, 0)
 }
 
 func main() {
