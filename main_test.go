@@ -2,8 +2,35 @@ package main
 
 import (
 	"testing"
-	"reflect"
 )
+
+func cellInSlice(cell *Cell, slice []*Cell) bool {
+	for _, c := range(slice) {
+		if cell == c {
+			return true
+		}
+	}
+	return false
+}
+
+func checkSolution(result, expected []*Cell, t *testing.T) {
+	//we don't care about the order
+	for _, cell := range(result) {
+		if ! cellInSlice(cell, expected) {
+			t.Errorf("Result contains unexpected value {%v}, expected: %v", cell, expected)
+		}
+	}
+
+	for _, cell := range(expected) {
+		if ! cellInSlice(cell, result) {
+			t.Errorf("Expected value {%v} not found in result: %v", cell, result)
+		}
+	}
+
+	if len(result) != len(expected) {
+		t.Errorf("Unexpected number of results %v != %v", len(result), len(expected))
+	}
+}
 
 func TestBasic2x2(t *testing.T) {
 	mat := newMatrix()
@@ -15,12 +42,10 @@ func TestBasic2x2(t *testing.T) {
 
 	found, result := mat.solve()
 
-	if found == false {
+	if !found {
 		t.Error("Should have found a solution")
 	}
-	if !reflect.DeepEqual(result, []*Cell{r1, r0}) {
-		t.Error("Wrong result")
-	}
+	checkSolution(result, []*Cell{r0, r1}, t)
 }
 
 
@@ -38,12 +63,10 @@ func TestBasic3x3(t *testing.T) {
 
 	found, result := mat.solve()
 
-	if found == false {
+	if !found {
 		t.Error("Should have found a solution")
 	}
-	if !reflect.DeepEqual(result, []*Cell{r1, r2}) {
-		t.Error("Wrong result")
-	}
+	checkSolution(result, []*Cell{r1, r2}, t)
 }
 
 
@@ -62,7 +85,7 @@ func TestBasic4x4(t *testing.T) {
 
 	found, result := mat.solve()
 
-	if found == false {
+	if !found {
 		t.Error("Should have found a solution")
 	}
 	if !reflect.DeepEqual(result, []*Cell{r3, r1, r0}) {
